@@ -4,6 +4,8 @@ xml2js = require('xml2js');
 const mysqlx = require('@mysql/xdevapi');
 
 const unescoFilePath = './assets/unesco-world-heritage-sites.xml';
+const namesFilePath = './assets/first-names.txt';
+const surnamesFilePath = './assets/first-names.txt';
 
 const options = {
     host: "localhost",
@@ -13,10 +15,11 @@ const options = {
 };
 
 const schemaName = 'unescoScheme';
-const tableName = 'sitesTable';
+const tableSites = 'sitesTable';
 const colName = 'name';
 const colLatitude = 'latitude';
 const colLongitude = 'longitude';
+const tableAgents = 'agentsTable';
 
 
 prepareDatabase();
@@ -34,19 +37,29 @@ async function prepareDatabase() {
             session.createSchema(schemaName);
         }
 
-        // Create table
-        session.sql(`CREATE TABLE ${schemaName}.${tableName} (_id SERIAL, ${colName} VARCHAR(500), ${colLatitude} VARCHAR(30), ${colLongitude} VARCHAR(30))`)
+        // Prepare tables
+        session.sql(`CREATE TABLE ${schemaName}.${tableSites} (_id SERIAL, ${colName} VARCHAR(500), ${colLatitude} VARCHAR(30), ${colLongitude} VARCHAR(30))`)
+            .execute();
+        session.sql(`CREATE TABLE ${schemaName}.${tableAgents} (_id SERIAL, ${colName} VARCHAR(100))`)
             .execute();
 
-        // Parse data
+        // Prepare sites, insert in table
         let sites = await parseXMLData();
-
-        // Insert parsed data in table
-        let table = session.getSchema(schemaName).getTable(tableName);
+        let sitesTable = session.getSchema(schemaName).getTable(tableSites);
         for (site of sites) {
-            await table
+            await sitesTable
                 .insert([colName, colLatitude, colLongitude])
                 .values([site.name, site.latitude, site.longitude])
+                .execute();
+        }
+
+        // Prepare agents, insert in table
+        let agents = prepareAgents(namesFilePath, surnamesFilePath);
+        let agentsTable = session.getSchema(schemaName).getTable(tableAgents);
+        for (agent of agents) {
+            await agentsTable
+                .insert([colName])
+                .values([agent])
                 .execute();
         }
 
@@ -80,4 +93,15 @@ async function parseXMLData() {
     })
 }
 
-
+function prepareAgents(namesFilePath, surnamesFilePath) {
+    let surnamesArray = fs.readFileSync(surnamesFilePath).toString().split("\n");
+    let namesArray = fs.readFileSync(namesFilePath).toString().split("\n");
+    let namePairs = namesArray.map(name => {
+        let randomIndex = Math.floor((Math.random() * surnamesArray.length) + 1);
+        let randomLastName = surnamesArray[randomIndex];
+        let namePair = `${name} ${randomLastName}`;
+        return namePair;
+    });
+    console.log('Created agents: ', namePairs.length);
+    return namePairs
+}
