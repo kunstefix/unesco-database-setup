@@ -1,6 +1,6 @@
 
 const fs = require('fs');
-xml2js = require('xml2js');
+const xml2js = require('xml2js');
 const mysqlx = require('@mysql/xdevapi');
 
 const unescoFilePath = './assets/unesco-world-heritage-sites.xml';
@@ -16,7 +16,9 @@ const options = {
 
 const schemaName = 'unescoScheme';
 const tableSites = 'sitesTable';
+const colID = '_id';
 const colName = 'name';
+const colAgentID = 'agentID';
 const colLatitude = 'latitude';
 const colLongitude = 'longitude';
 const tableAgents = 'agentsTable';
@@ -38,20 +40,10 @@ async function prepareDatabase() {
         }
 
         // Prepare tables
-        session.sql(`CREATE TABLE ${schemaName}.${tableSites} (_id SERIAL, ${colName} VARCHAR(500), ${colLatitude} VARCHAR(30), ${colLongitude} VARCHAR(30))`)
+        await session.sql(`CREATE TABLE ${schemaName}.${tableAgents} (${colID} SERIAL, ${colName} VARCHAR(100), PRIMARY KEY (${colID}))`)
             .execute();
-        session.sql(`CREATE TABLE ${schemaName}.${tableAgents} (_id SERIAL, ${colName} VARCHAR(100))`)
+        await session.sql(`CREATE TABLE ${schemaName}.${tableSites} (${colID} SERIAL, ${colAgentID}  BIGINT UNSIGNED UNIQUE, ${colName} VARCHAR(500), ${colLatitude} VARCHAR(30), ${colLongitude} VARCHAR(30), PRIMARY KEY (${colID}), FOREIGN KEY (${colAgentID}) REFERENCES ${tableAgents}(${colID}))`)
             .execute();
-
-        // Prepare sites, insert in table
-        let sites = await parseXMLData();
-        let sitesTable = session.getSchema(schemaName).getTable(tableSites);
-        for (site of sites) {
-            await sitesTable
-                .insert([colName, colLatitude, colLongitude])
-                .values([site.name, site.latitude, site.longitude])
-                .execute();
-        }
 
         // Prepare agents, insert in table
         let agents = prepareAgents(namesFilePath, surnamesFilePath);
@@ -60,6 +52,31 @@ async function prepareDatabase() {
             await agentsTable
                 .insert([colName])
                 .values([agent])
+                .execute();
+        }
+
+        // Retrieve agent IDs
+        let agentIDs = [];
+        await session.getSchema(schemaName).getTable(tableAgents)
+            .select([colID])
+            .execute(id => {
+                agentIDs.push(id[0]);
+            });
+
+        // Prepare sites, insert in table
+        let sites = await parseXMLData();
+        let sitesTable = session.getSchema(schemaName).getTable(tableSites);
+
+        let randomAgentIDindex;
+        let selectedID;
+
+        for (site of sites) {
+            // Randomly select agent ID
+            randomAgentIDindex = Math.floor((Math.random() * agentIDs.length) - 1);
+            selectedID = agentIDs.splice(randomAgentIDindex, 1)[0];
+            await sitesTable
+                .insert([colName, colLatitude, colLongitude, colAgentID])
+                .values([site.name, site.latitude, site.longitude, selectedID])
                 .execute();
         }
 
@@ -79,7 +96,7 @@ async function parseXMLData() {
         fs.readFile(unescoFilePath, function (err, data) {
             parser.parseString(data, function (err, result) {
                 let row = result.query.row;
-                let sites = row.map((r, i) => {
+                let sites = row.map((r) => {
                     return {
                         name: r.site.join(),
                         longitude: r.longitude.join(),
