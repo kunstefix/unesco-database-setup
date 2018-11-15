@@ -1,13 +1,6 @@
 const mysqlx = require('@mysql/xdevapi');
+const options = require('./credentials').options;
 
-
-const options = {
-    host: "localhost",
-    port: '33060',
-    user: "root",
-    password: "root1234",
-    schema: "unescoScheme"
-};
 
 
 calculate();

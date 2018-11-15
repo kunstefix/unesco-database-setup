@@ -6,14 +6,8 @@ const mysqlx = require('@mysql/xdevapi');
 const unescoFilePath = './assets/unesco-world-heritage-sites.xml';
 const namesFilePath = './assets/first-names.txt';
 const surnamesFilePath = './assets/first-names.txt';
+const options = require('./credentials').options;
 
-// For the sake of projects purpose and simplicity this top secret data is placed here
-const options = {
-    host: "localhost",
-    port: '33060',
-    user: "root",
-    password: "root1234",
-};
 
 const schemaName = 'unescoScheme';
 const tableSites = 'sitesTable';
@@ -30,6 +24,7 @@ prepareDatabase();
 async function prepareDatabase() {
 
     try {
+        console.log("CONNECTION TO DATABASE ...");
 
         // Connect to DB
         var session = await mysqlx.getSession(options)
@@ -39,6 +34,7 @@ async function prepareDatabase() {
         if (!exists) {
             session.createSchema(schemaName);
         }
+        console.log("CREATING TABLES ...");
 
         // Prepare tables
         await session.sql(`CREATE TABLE ${schemaName}.${tableAgents} (${colID} SERIAL, ${colName} VARCHAR(100), PRIMARY KEY (${colID}))`)
@@ -46,6 +42,7 @@ async function prepareDatabase() {
         await session.sql(`CREATE TABLE ${schemaName}.${tableSites} (${colID} SERIAL, ${colAgentID}  BIGINT UNSIGNED UNIQUE, ${colName} VARCHAR(500), ${colLatitude} double(9,6), ${colLongitude} double(9,6), PRIMARY KEY (${colID}), FOREIGN KEY (${colAgentID}) REFERENCES ${tableAgents}(${colID}))`)
             .execute();
 
+        console.log("INSERTING DATA ...");
         // Prepare agents, insert in table
         let agents = prepareAgents(namesFilePath, surnamesFilePath);
         let agentsTable = session.getSchema(schemaName).getTable(tableAgents);
@@ -80,7 +77,7 @@ async function prepareDatabase() {
                 .values([site.name, site.latitude, site.longitude, selectedID])
                 .execute();
         }
-
+        console.log("DONE");
     } catch (err) {
         console.log(err);
     } finally {
