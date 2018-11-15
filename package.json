@@ -10,6 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "@mysql/xdevapi": "^8.0.13",
+    "deg2rad": "^1.0.0",
+    "rad2deg": "^1.0.0",
     "xml2js": "^0.4.19"
   }
 }

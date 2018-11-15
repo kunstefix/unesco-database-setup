@@ -7,6 +7,7 @@ const unescoFilePath = './assets/unesco-world-heritage-sites.xml';
 const namesFilePath = './assets/first-names.txt';
 const surnamesFilePath = './assets/first-names.txt';
 
+// For the sake of projects purpose and simplicity this top secret data is placed here
 const options = {
     host: "localhost",
     port: '33060',
@@ -42,7 +43,7 @@ async function prepareDatabase() {
         // Prepare tables
         await session.sql(`CREATE TABLE ${schemaName}.${tableAgents} (${colID} SERIAL, ${colName} VARCHAR(100), PRIMARY KEY (${colID}))`)
             .execute();
-        await session.sql(`CREATE TABLE ${schemaName}.${tableSites} (${colID} SERIAL, ${colAgentID}  BIGINT UNSIGNED UNIQUE, ${colName} VARCHAR(500), ${colLatitude} VARCHAR(30), ${colLongitude} VARCHAR(30), PRIMARY KEY (${colID}), FOREIGN KEY (${colAgentID}) REFERENCES ${tableAgents}(${colID}))`)
+        await session.sql(`CREATE TABLE ${schemaName}.${tableSites} (${colID} SERIAL, ${colAgentID}  BIGINT UNSIGNED UNIQUE, ${colName} VARCHAR(500), ${colLatitude} double(9,6), ${colLongitude} double(9,6), PRIMARY KEY (${colID}), FOREIGN KEY (${colAgentID}) REFERENCES ${tableAgents}(${colID}))`)
             .execute();
 
         // Prepare agents, insert in table
